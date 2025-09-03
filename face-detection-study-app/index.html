@@ -114,12 +114,12 @@
                         noStroke();
                         ellipse(x, y, 8, 8);
 
-                        // 졸음 감지: 코가 아래쪽(70% 이상)에 5초 이상 고정
-                        if (y > height * 0.7) {
+                        // 졸음 감지: 코가 아래쪽(60% 이상)에 3초 이상 고정
+                        if (y > height * 0.6) {
                             if (!isDrowsy) {
                                 isDrowsy = true;
                                 drowsinessStartTime = millis();
-                            } else if (millis() - drowsinessStartTime > 5000) { // 5초
+                            } else if (millis() - drowsinessStartTime > 3000) { // 3초
                                 currentStatus = '졸고 있음';
                             }
                         } else {
@@ -131,7 +131,7 @@
                             if (!isDistracted) {
                                 isDistracted = true;
                                 distractionStartTime = millis();
-                            } else if (millis() - distractionStartTime > 1000) { // 1초 지속
+                            } else if (millis() - distractionStartTime > 500) { // 0.5초 지속
                                 currentStatus = '딴짓 중';
                             }
                         } else {
@@ -143,13 +143,20 @@
                     if (!isDistracted) {
                         isDistracted = true;
                         distractionStartTime = millis();
-                    } else if (millis() - distractionStartTime > 1000) {
+                    } else if (millis() - distractionStartTime > 500) {
                         currentStatus = '딴짓 중';
                     }
                 }
 
                 // 상태 업데이트
                 if (currentStatus !== lastStatus) {
+                    // 상태가 변경될 때 이전 상태의 플래그들을 초기화
+                    if (currentStatus !== '졸고 있음') {
+                        isDrowsy = false;
+                    }
+                    if (currentStatus !== '딴짓 중') {
+                        isDistracted = false;
+                    }
                     lastStatus = currentStatus;
                     document.getElementById('status').textContent = '상태: ' + currentStatus;
                 }
@@ -177,16 +184,18 @@
             studyTime = 0;
             isDrowsy = false;
             isDistracted = false;
-            lastStatus = '준비 중';
+            lastStatus = '공부 중'; // 초기 상태를 공부 중으로 설정
 
             // 시간 카운팅 타이머 시작
             timeCounter = setInterval(function() {
-                if (lastStatus === '공부 중') {
-                    studyTime++;
-                } else if (lastStatus === '졸고 있음') {
-                    drowsinessTime++;
-                } else if (lastStatus === '딴짓 중') {
-                    distractionTime++;
+                if (isStudying) {
+                    if (lastStatus === '공부 중') {
+                        studyTime++;
+                    } else if (lastStatus === '졸고 있음') {
+                        drowsinessTime++;
+                    } else if (lastStatus === '딴짓 중') {
+                        distractionTime++;
+                    }
                 }
             }, 1000);
 
