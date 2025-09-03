@@ -68,6 +68,10 @@
         let isStudying = false;
         let distractionTime = 0;
         let drowsinessTime = 0;
+        let drowsinessStartTime = 0;
+        let distractionStartTime = 0;
+        let isDrowsy = false;
+        let isDistracted = false;
 
         // p5.js setup
         function setup() {
@@ -94,66 +98,44 @@
 
             if (predictions.length > 0) {
                 let face = predictions[0].scaledMesh;
-                // 코와 눈만 표시 (코: 4, 왼쪽 눈: 주요 인덱스, 오른쪽 눈: 주요 인덱스)
                 let noseIndex = 4;
-                let leftEyeIndices = [33, 133, 145, 153, 154, 155, 157, 158, 159, 160, 161, 163, 173, 246];
-                let rightEyeIndices = [362, 382, 384, 385, 386, 387, 388, 390, 398, 466];
-
-                // 코 표시
                 if (face[noseIndex]) {
                     let [x, y] = face[noseIndex];
-                    fill(255, 0, 0); // 빨강
+                    fill(255, 0, 0); // 빨강 (코 표시)
                     noStroke();
                     ellipse(x, y, 8, 8);
+
+                    // 졸음 감지: 코가 아래쪽(70% 이상)에 5초 이상 고정
+                    if (y > height * 0.7) {
+                        if (!isDrowsy) {
+                            isDrowsy = true;
+                            drowsinessStartTime = millis();
+                        } else if (millis() - drowsinessStartTime > 5000) { // 5초
+                            document.getElementById('status').textContent = '상태: 졸고 있음';
+                            drowsinessTime++;
+                        }
+                    } else {
+                        isDrowsy = false;
+                    }
+
+                    // 딴짓 감지: 코가 화면 밖으로 나감
+                    if (x < 0 || x > width || y < 0 || y > height) {
+                        if (!isDistracted) {
+                            isDistracted = true;
+                            distractionStartTime = millis();
+                        } else if (millis() - distractionStartTime > 1000) { // 1초 지속
+                            document.getElementById('status').textContent = '상태: 딴짓 중';
+                            distractionTime++;
+                        }
+                    } else {
+                        isDistracted = false;
+                        if (!isDrowsy && isStudying) {
+                            document.getElementById('status').textContent = '상태: 공부 중';
+                        }
+                    }
                 }
-
-                // 왼쪽 눈 표시
-                leftEyeIndices.forEach(i => {
-                    if (face[i]) {
-                        let [x, y] = face[i];
-                        fill(0, 255, 0); // 초록
-                        noStroke();
-                        ellipse(x, y, 4, 4);
-                    }
-                });
-
-                // 오른쪽 눈 표시
-                rightEyeIndices.forEach(i => {
-                    if (face[i]) {
-                        let [x, y] = face[i];
-                        fill(0, 255, 0); // 초록
-                        noStroke();
-                        ellipse(x, y, 4, 4);
-                    }
-                });
-
-                // 실시간 상태 감지
-                updateStatus(face);
             }
             pop();
-        }
-
-        function updateStatus(face) {
-            let statusDiv = document.getElementById('status');
-            if (!isStudying) {
-                statusDiv.textContent = '상태: 준비 중';
-                return;
-            }
-
-            // 졸음 감지: 눈 사이 거리 (왼쪽 눈 33과 오른쪽 눈 362 사이 거리)
-            let leftEye = face[33];
-            let rightEye = face[362];
-            if (leftEye && rightEye) {
-                let eyeDist = dist(leftEye[0], leftEye[1], rightEye[0], rightEye[1]);
-                if (eyeDist < 50) { // 임계값 (졸음으로 판단)
-                    statusDiv.textContent = '상태: 졸고 있음';
-                    drowsinessTime++;
-                } else {
-                    statusDiv.textContent = '상태: 공부 중';
-                }
-            } else {
-                statusDiv.textContent = '상태: 얼굴 감지 실패';
-            }
         }
 
         // 학습 시작
@@ -165,6 +147,8 @@
             isStudying = true;
             distractionTime = 0;
             drowsinessTime = 0;
+            isDrowsy = false;
+            isDistracted = false;
 
             studyTimer = setInterval(function() {
                 if (timeLeft <= 0) {
@@ -188,7 +172,8 @@
             isStudying = false;
             document.getElementById('results').innerHTML = `
                 <p>총 학습 시간: ${Math.floor(studyDuration / 3600)}시간 ${Math.floor((studyDuration % 3600) / 60)}분</p>
-                <p>졸음 시간: ${Math.floor(drowsinessTime / 60)}분 ${drowsinessTime % 60}초</p>
+                <p>졸음 시간: ${Math.floor(drowsinessTime)}초</p>
+                <p>딴짓 시간: ${Math.floor(distractionTime)}초</p>
             `;
         });
     </script>
