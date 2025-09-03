@@ -66,6 +66,7 @@
     <script>
         let video, facemesh, predictions = [];
         let studyTimer;
+        let timeCounter; // 시간 카운팅용 타이머
         let studyDuration = 0;
         let isStudying = false;
         let distractionTime = 0;
@@ -73,7 +74,6 @@
         let studyTime = 0; // 공부 중 시간
         let drowsinessStartTime = 0;
         let distractionStartTime = 0;
-        let studyStartTime = 0;
         let isDrowsy = false;
         let isDistracted = false;
         let lastStatus = '준비 중';
@@ -148,18 +148,10 @@
                     }
                 }
 
-                // 상태 업데이트 및 시간 카운팅
+                // 상태 업데이트
                 if (currentStatus !== lastStatus) {
                     lastStatus = currentStatus;
                     document.getElementById('status').textContent = '상태: ' + currentStatus;
-                }
-
-                if (currentStatus === '공부 중') {
-                    studyTime++;
-                } else if (currentStatus === '졸고 있음') {
-                    drowsinessTime++;
-                } else if (currentStatus === '딴짓 중') {
-                    distractionTime++;
                 }
             }
             pop();
@@ -187,9 +179,21 @@
             isDistracted = false;
             lastStatus = '준비 중';
 
+            // 시간 카운팅 타이머 시작
+            timeCounter = setInterval(function() {
+                if (lastStatus === '공부 중') {
+                    studyTime++;
+                } else if (lastStatus === '졸고 있음') {
+                    drowsinessTime++;
+                } else if (lastStatus === '딴짓 중') {
+                    distractionTime++;
+                }
+            }, 1000);
+
             studyTimer = setInterval(function() {
                 if (timeLeft <= 0) {
                     clearInterval(studyTimer);
+                    clearInterval(timeCounter);
                     isStudying = false;
                     alert('학습 시간 종료!');
                     return;
@@ -206,6 +210,7 @@
         // 학습 종료
         document.getElementById('endStudy').addEventListener('click', function() {
             clearInterval(studyTimer);
+            clearInterval(timeCounter);
             isStudying = false;
             const studyMinutes = Math.floor(studyTime / 60);
             const studySeconds = studyTime % 60;
