@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>학습 모니터링 앱 - FaceMesh</title>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ml5@0.12.2/dist/ml5.min.js"></script>
@@ -17,7 +17,9 @@
         }
         #p5-canvas-container {
             margin: 20px auto;
-            width: 640px;
+            width: 100%;
+            max-width: 640px;
+            height: auto;
             border: 2px solid #ccc;
         }
         #status {
@@ -68,17 +70,22 @@
         let isStudying = false;
         let distractionTime = 0;
         let drowsinessTime = 0;
+        let studyTime = 0; // 공부 중 시간
         let drowsinessStartTime = 0;
         let distractionStartTime = 0;
+        let studyStartTime = 0;
         let isDrowsy = false;
         let isDistracted = false;
+        let lastStatus = '준비 중';
 
         // p5.js setup
         function setup() {
-            let cnv = createCanvas(640, 480);
+            let canvasWidth = min(windowWidth - 40, 640); // 모바일 최적화: 창 너비에 맞춤, 최대 640px
+            let canvasHeight = canvasWidth * 0.75; // 4:3 비율 유지
+            let cnv = createCanvas(canvasWidth, canvasHeight);
             cnv.parent('p5-canvas-container');
             video = createCapture(VIDEO);
-            video.size(width, height);
+            video.size(canvasWidth, canvasHeight);
             video.hide();
             facemesh = ml5.facemesh(video, modelReady);
             facemesh.on('predict', results => { predictions = results; });
@@ -96,46 +103,74 @@
             scale(-1, 1);
             image(video, 0, 0, width, height);
 
-            if (predictions.length > 0) {
-                let face = predictions[0].scaledMesh;
-                let noseIndex = 4;
-                if (face[noseIndex]) {
-                    let [x, y] = face[noseIndex];
-                    fill(255, 0, 0); // 빨강 (코 표시)
-                    noStroke();
-                    ellipse(x, y, 8, 8);
+            if (isStudying) {
+                let currentStatus = '공부 중';
+                if (predictions.length > 0) {
+                    let face = predictions[0].scaledMesh;
+                    let noseIndex = 4;
+                    if (face[noseIndex]) {
+                        let [x, y] = face[noseIndex];
+                        fill(255, 0, 0); // 빨강 (코 표시)
+                        noStroke();
+                        ellipse(x, y, 8, 8);
 
-                    // 졸음 감지: 코가 아래쪽(70% 이상)에 5초 이상 고정
-                    if (y > height * 0.7) {
-                        if (!isDrowsy) {
-                            isDrowsy = true;
-                            drowsinessStartTime = millis();
-                        } else if (millis() - drowsinessStartTime > 5000) { // 5초
-                            document.getElementById('status').textContent = '상태: 졸고 있음';
-                            drowsinessTime++;
+                        // 졸음 감지: 코가 아래쪽(70% 이상)에 5초 이상 고정
+                        if (y > height * 0.7) {
+                            if (!isDrowsy) {
+                                isDrowsy = true;
+                                drowsinessStartTime = millis();
+                            } else if (millis() - drowsinessStartTime > 5000) { // 5초
+                                currentStatus = '졸고 있음';
+                            }
+                        } else {
+                            isDrowsy = false;
                         }
-                    } else {
-                        isDrowsy = false;
-                    }
 
-                    // 딴짓 감지: 코가 화면 밖으로 나감
-                    if (x < 0 || x > width || y < 0 || y > height) {
-                        if (!isDistracted) {
-                            isDistracted = true;
-                            distractionStartTime = millis();
-                        } else if (millis() - distractionStartTime > 1000) { // 1초 지속
-                            document.getElementById('status').textContent = '상태: 딴짓 중';
-                            distractionTime++;
-                        }
-                    } else {
-                        isDistracted = false;
-                        if (!isDrowsy && isStudying) {
-                            document.getElementById('status').textContent = '상태: 공부 중';
+                        // 딴짓 감지: 코가 화면 밖으로 나감
+                        if (x < 0 || x > width || y < 0 || y > height) {
+                            if (!isDistracted) {
+                                isDistracted = true;
+                                distractionStartTime = millis();
+                            } else if (millis() - distractionStartTime > 1000) { // 1초 지속
+                                currentStatus = '딴짓 중';
+                            }
+                        } else {
+                            isDistracted = false;
                         }
                     }
+                } else {
+                    // 얼굴이 사라지면 딴짓
+                    if (!isDistracted) {
+                        isDistracted = true;
+                        distractionStartTime = millis();
+                    } else if (millis() - distractionStartTime > 1000) {
+                        currentStatus = '딴짓 중';
+                    }
+                }
+
+                // 상태 업데이트 및 시간 카운팅
+                if (currentStatus !== lastStatus) {
+                    lastStatus = currentStatus;
+                    document.getElementById('status').textContent = '상태: ' + currentStatus;
+                }
+
+                if (currentStatus === '공부 중') {
+                    studyTime++;
+                } else if (currentStatus === '졸고 있음') {
+                    drowsinessTime++;
+                } else if (currentStatus === '딴짓 중') {
+                    distractionTime++;
                 }
             }
             pop();
+        }
+
+        // 창 크기 변경 시 캔버스 리사이즈
+        function windowResized() {
+            let canvasWidth = min(windowWidth - 40, 640);
+            let canvasHeight = canvasWidth * 0.75;
+            resizeCanvas(canvasWidth, canvasHeight);
+            video.size(canvasWidth, canvasHeight);
         }
 
         // 학습 시작
@@ -147,8 +182,10 @@
             isStudying = true;
             distractionTime = 0;
             drowsinessTime = 0;
+            studyTime = 0;
             isDrowsy = false;
             isDistracted = false;
+            lastStatus = '준비 중';
 
             studyTimer = setInterval(function() {
                 if (timeLeft <= 0) {
@@ -170,10 +207,16 @@
         document.getElementById('endStudy').addEventListener('click', function() {
             clearInterval(studyTimer);
             isStudying = false;
+            const studyMinutes = Math.floor(studyTime / 60);
+            const studySeconds = studyTime % 60;
+            const drowsinessMinutes = Math.floor(drowsinessTime / 60);
+            const drowsinessSeconds = drowsinessTime % 60;
+            const distractionMinutes = Math.floor(distractionTime / 60);
+            const distractionSeconds = distractionTime % 60;
             document.getElementById('results').innerHTML = `
-                <p>총 학습 시간: ${Math.floor(studyDuration / 3600)}시간 ${Math.floor((studyDuration % 3600) / 60)}분</p>
-                <p>졸음 시간: ${Math.floor(drowsinessTime)}초</p>
-                <p>딴짓 시간: ${Math.floor(distractionTime)}초</p>
+                <p>총 학습 시간: ${studyMinutes}분 ${studySeconds}초</p>
+                <p>졸음 시간: ${drowsinessMinutes}분 ${drowsinessSeconds}초</p>
+                <p>딴짓 시간: ${distractionMinutes}분 ${distractionSeconds}초</p>
             `;
         });
     </script>
