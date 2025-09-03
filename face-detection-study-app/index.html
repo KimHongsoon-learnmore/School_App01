@@ -1,31 +1,172 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Detection Study App</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ml5/0.6.0/ml5.min.js"></script>
+    <title>학습 모니터링 앱</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        #camera {
+            width: 800px;
+            height: 800px;
+            border: 2px solid #ccc;
+            background-color: #000;
+            margin: 20px auto;
+            display: block;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: #555;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #777;
+        }
+        #timer {
+            font-size: 24px;
+            margin: 20px;
+        }
+        #results {
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <button id="toggleCamera">Turn Camera On</button>
-        <div class="video-container">
-            <video id="video" width="800" height="800" autoplay></video>
-        </div>
-        <div class="study-time">
-            <label for="studyDuration">Select Study Time (minutes):</label>
-            <select id="studyDuration">
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="30">30</option>
-                <option value="60">60</option>
-            </select>
-            <button id="startStudy">Start Study Session</button>
-        </div>
-        <div id="countdown"></div>
-        <div id="analysis"></div>
-    </div>
-    <script src="script.js"></script>
+    <h1>학습 모니터링 앱</h1>
+    <button id="cameraToggle">카메라 켜기</button>
+    <video id="camera" autoplay muted></video>
+    <br>
+    <label for="studyTime">학습 시간 선택 (분):</label>
+    <select id="studyTime">
+        <option value="5">5분</option>
+        <option value="10">10분</option>
+        <option value="15">15분</option>
+    </select>
+    <button id="startStudy">학습 시작</button>
+    <button id="endStudy">종료</button>
+    <div id="timer">00:00</div>
+    <div id="results"></div>
+
+    <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+    <script>
+        let video;
+        let faceapi;
+        let isCameraOn = false;
+        let studyTimer;
+        let studyDuration = 0;
+        let distractionTime = 0;
+        let drowsinessTime = 0;
+        let isStudying = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            video = document.getElementById('camera');
+            const cameraToggle = document.getElementById('cameraToggle');
+            const startStudy = document.getElementById('startStudy');
+            const endStudy = document.getElementById('endStudy');
+            const timerDisplay = document.getElementById('timer');
+            const results = document.getElementById('results');
+
+            // ml5 모델 로드
+            faceapi = ml5.faceApi(video, modelReady);
+
+            function modelReady() {
+                console.log('ml5 모델 로드 완료');
+            }
+
+            // 카메라 토글
+            cameraToggle.addEventListener('click', function() {
+                if (!isCameraOn) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(function(stream) {
+                            video.srcObject = stream;
+                            isCameraOn = true;
+                            cameraToggle.textContent = '카메라 끄기';
+                            console.log('카메라 켜짐');
+                        })
+                        .catch(function(err) {
+                            console.error('카메라 권한 오류:', err);
+                            alert('카메라 권한을 허용해주세요.');
+                        });
+                } else {
+                    const stream = video.srcObject;
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                    video.srcObject = null;
+                    isCameraOn = false;
+                    cameraToggle.textContent = '카메라 켜기';
+                    console.log('카메라 꺼짐');
+                }
+            });
+
+            // 학습 시작
+            startStudy.addEventListener('click', function() {
+                if (!isCameraOn) {
+                    alert('먼저 카메라를 켜주세요.');
+                    return;
+                }
+                studyDuration = parseInt(document.getElementById('studyTime').value) * 60; // 초 단위
+                let timeLeft = studyDuration;
+                isStudying = true;
+                distractionTime = 0;
+                drowsinessTime = 0;
+
+                studyTimer = setInterval(function() {
+                    if (timeLeft <= 0) {
+                        clearInterval(studyTimer);
+                        isStudying = false;
+                        alert('학습 시간 종료!');
+                        return;
+                    }
+                    timeLeft--;
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                    // 얼굴 감지 (간단한 예시: 실제로는 ml5 얼굴 감지 로직 추가)
+                    if (faceapi && isStudying) {
+                        faceapi.detect(gotResults);
+                    }
+                }, 1000);
+                console.log('학습 시작됨');
+            });
+
+            // 학습 종료
+            endStudy.addEventListener('click', function() {
+                clearInterval(studyTimer);
+                isStudying = false;
+                results.innerHTML = `
+                    <p>총 학습 시간: ${Math.floor(studyDuration / 60)}분</p>
+                    <p>딴짓 시간: ${Math.floor(distractionTime / 60)}분</p>
+                    <p>졸음 시간: ${Math.floor(drowsinessTime / 60)}분</p>
+                `;
+                console.log('학습 종료됨');
+            });
+
+            function gotResults(err, result) {
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+                // 간단한 딴짓/졸음 감지 로직 (실제로는 더 정교하게 구현)
+                if (result && result.length > 0) {
+                    // 예: 얼굴이 화면 밖에 있으면 딴짓, 눈 감김 등으로 졸음 감지
+                    // 여기서는 임시로 랜덤 값 사용 (실제 모델에 맞게 수정)
+                    if (Math.random() > 0.8) distractionTime++;
+                    if (Math.random() > 0.9) drowsinessTime++;
+                }
+            }
+        });
+    </script>
 </body>
 </html>
