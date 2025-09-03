@@ -1,0 +1,23 @@
+{
+  "name": "face-detection-learning-app",
+  "version": "1.0.0",
+  "description": "An interactive app that uses ml5.js for face detection to monitor learning focus.",
+  "main": "src/js/app.js",
+  "scripts": {
+    "start": "live-server src"
+  },
+  "dependencies": {
+    "ml5": "^0.6.0"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.1"
+  },
+  "keywords": [
+    "face-detection",
+    "ml5",
+    "learning",
+    "focus-tracker"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
