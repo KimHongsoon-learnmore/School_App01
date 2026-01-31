@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스네이크 게임 (Snake Game)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1>🐍 스네이크 게임</h1>
+        <div class="score-board">
+            <div class="score">점수: <span id="score">0</span></div>
+            <div class="high-score">최고 점수: <span id="highScore">0</span></div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="controls">
+            <div class="instructions">
+                <h3>게임 방법</h3>
+                <p>⬆️ ⬇️ ⬅️ ➡️ 방향키를 사용하여 뱀을 움직이세요</p>
+                <p>🍎 사과를 먹으면 점수가 올라갑니다</p>
+                <p>⚠️ 벽이나 자기 몸에 부딪히면 게임이 끝납니다</p>
+            </div>
+            <button id="startBtn" class="btn">게임 시작</button>
+            <button id="pauseBtn" class="btn" style="display: none;">일시정지</button>
+            <button id="restartBtn" class="btn" style="display: none;">다시 시작</button>
+        </div>
+        <div id="gameOver" class="game-over" style="display: none;">
+            <h2>게임 오버!</h2>
+            <p>최종 점수: <span id="finalScore">0</span></p>
+            <button id="playAgainBtn" class="btn">다시 하기</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
