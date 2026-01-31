@@ -138,8 +138,8 @@ h1 {
         padding: 20px;
     }
     
-    #gameCanvas {
-        width: 100% !important;
-        height: auto !important;
+    .game-container #gameCanvas {
+        width: 100%;
+        height: auto;
     }
 }
